@@ -102,11 +102,17 @@ check_environment() {
 
 install_dependencies() {
     DEPENDENCIES='bash bash-completion tar bat tree multitail fastfetch wget unzip fontconfig trash-cli'
-    if ! command_exists nvim; then
-        DEPENDENCIES="${DEPENDENCIES} neovim"
+    
+    # Replace Neovim with Micro
+    if ! command_exists micro; then
+        DEPENDENCIES="${DEPENDENCIES} micro"
+        NEED_MICRO=true
+    else
+        NEED_MICRO=false
     fi
 
     print_colored "$YELLOW" "Installing dependencies..."
+
     case "$PACKAGER" in
         pacman)
             install_pacman_dependencies
@@ -115,13 +121,13 @@ install_dependencies() {
             ${SUDO_CMD} ${PACKAGER} install -y ${DEPENDENCIES}
             ;;
         emerge)
-            ${SUDO_CMD} ${PACKAGER} -v app-shells/bash app-shells/bash-completion app-arch/tar app-editors/neovim sys-apps/bat app-text/tree app-text/multitail app-misc/fastfetch app-misc/trash-cli
+            ${SUDO_CMD} ${PACKAGER} -v app-shells/bash app-shells/bash-completion app-arch/tar app-editors/micro sys-apps/bat app-text/tree app-text/multitail app-misc/fastfetch app-misc/trash-cli
             ;;
         xbps-install)
-            ${SUDO_CMD} ${PACKAGER} -v ${DEPENDENCIES}
+            ${SUDO_CMD} ${PACKAGER} install -v ${DEPENDENCIES}
             ;;
         nix-env)
-            ${SUDO_CMD} ${PACKAGER} -iA nixos.bash nixos.bash-completion nixos.gnutar nixos.neovim nixos.bat nixos.tree nixos.multitail nixos.fastfetch nixos.pkgs.starship nixos.trash-cli
+            ${SUDO_CMD} ${PACKAGER} -iA nixos.bash nixos.bash-completion nixos.gnutar nixos.micro nixos.bat nixos.tree nixos.multitail nixos.fastfetch nixos.pkgs.starship nixos.trash-cli
             ;;
         dnf)
             ${SUDO_CMD} ${PACKAGER} install -y ${DEPENDENCIES}
@@ -133,6 +139,13 @@ install_dependencies() {
             ${SUDO_CMD} ${PACKAGER} install -yq ${DEPENDENCIES}
             ;;
     esac
+
+    # If micro isn't in packages or install failed, fallback to the static binary
+    if [ "$NEED_MICRO" = true ] && ! command_exists micro; then
+        print_colored "$YELLOW" "Installing micro via static binary..."
+        curl https://getmic.ro/ | bash
+        ${SUDO_CMD} mv micro /usr/local/bin/
+    fi
 
     install_font
 }
